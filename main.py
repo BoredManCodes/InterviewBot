@@ -72,12 +72,12 @@ async def on_member_join(ctx):
         try:
             msg = await bot.wait_for('message', timeout=600, check=check)
         except asyncio.TimeoutError:
-            await channel.send("You took too long, your application has been deleted."
+            await channel.send("You took too long, your application has been closed."
                                "\nType `!apply` to restart the process")
             return
         else:
             answers.append(msg)
-            await ctx.send("Your application has been completed. Please wait for a staff member to assess your answers")
+            await channel.send("Your application has been completed. Please wait for a staff member to assess your answers")
 
 @bot.command(pass_context=True)
 @commands.has_any_role('Moderator', 'Administrator', 'Discord Admin')
@@ -127,12 +127,17 @@ async def apply(ctx):
             try:
                 msg = await bot.wait_for('message', timeout=600, check=check)
             except asyncio.TimeoutError:
-                await ctx.send("You took too long, your application has been deleted."
+                await ctx.send("You took too long, your application has been closed."
                                    "\nType `!apply` to restart the process")
 
                 return
             else:
                 answers.append(msg)
         await ctx.send("Your application has been completed. Please wait for a staff member to assess your answers")
-        
-bot.run(token go brrrr)
+
+
+
+#TODO create invite on approved command and DM the user
+
+
+bot.run(token go brrr)
