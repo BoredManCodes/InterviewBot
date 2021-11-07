@@ -1,9 +1,10 @@
 import discord
 import asyncio
+from decouple import config
 from discord.ext import commands
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
-
+token = config('TOKEN')
 
 @bot.event
 async def on_ready():
@@ -77,10 +78,15 @@ async def on_member_join(ctx):
             return
         else:
             answers.append(msg)
-            await channel.send("Your application has been completed. Please wait for a staff member to assess your answers")
+    await channel.send("Your application has been completed. Please wait for a <@&907041826182148136> member to assess your answers")
+    answer_channel = bot.get_channel(861290025891135489)
+    e = discord.Embed(color=ctx.author.color)
+    e.title = ctx.author.name
+    e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n**{questions[8]}**: ```{answers[8].content}```\n"
+    await answer_channel.send(embed=e)
 
 @bot.command(pass_context=True)
-@commands.has_any_role('Moderator', 'Administrator', 'Discord Admin')
+@commands.has_any_role('Moderator', 'Administrator', 'Discord Admin', 'Staff')
 async def nuke(ctx):
     await ctx.message.delete()
     category = discord.utils.get(ctx.guild.categories, name="APPLICATIONS")
@@ -112,10 +118,13 @@ async def apply(ctx):
         await ctx.send(str(channel_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
 
         questions = ["How old are you?", "What are your pronouns?",
-                     "When faced with conflict, what is your go-to solution/reaction?", "Do you have Minecraft Java Edition?",
+                     "When faced with conflict, what is your go-to solution/reaction?",
+                     "Do you have Minecraft Java Edition?",
                      "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
-                     "Are you a content creator? (if yes, please include a link)", "Any additional information about yourself?",
-                     "How did you get invited to the server?", "Any other questions for us?"] # Create your list of answers
+                     "Are you a content creator? (if yes, please include a link)",
+                     "Any additional information about yourself?",
+                     "How did you get invited to the server?",
+                     "Any other questions for us?"]  # Create your list of answers
 
         answers = []
 
@@ -133,11 +142,23 @@ async def apply(ctx):
                 return
             else:
                 answers.append(msg)
-        await ctx.send("Your application has been completed. Please wait for a staff member to assess your answers")
+        await ctx.send("Your application has been completed. Please wait for a <@&907041826182148136> member to assess your answers")
+        answer_channel = bot.get_channel(861290025891135489)
+        e = discord.Embed(color=ctx.author.color)
+        e.title = ctx.author.name
+        e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n**{questions[8]}**: ```{answers[8].content}```\n"
+        await answer_channel.send(embed=e)
 
 
+@bot.command()
+@commands.has_any_role('Moderator', 'Administrator', 'Discord Admin', 'Staff')
+async def close(ctx):
+    blacklisted = [861275842009235457, 861290025891135489, 906739301394567189, 861279044162420766, 861279509110194207, 906747833825243146]
+    if ctx.channel.id in blacklisted:
+        await ctx.send("https://media.giphy.com/media/3oKHW6zXvJ02pDmqTC/giphy.gif")
+        await ctx.send("You can't do that here. This command will delete the channel and we wouldn't want that")
+    else:
+        await ctx.channel.delete()
 
-#TODO create invite on approved command and DM the user
 
-
-bot.run(token go brrr)
+bot.run(token)
