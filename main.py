@@ -99,14 +99,14 @@ async def nuke(ctx):
             await channel.delete()
         except AttributeError:
             pass
-    await category.delete()
     if channel_count > 1:
         channel_count_msg = "Deleted", channel_count, "applications"
+    if channel_count < 1:
+        channel_count_msg = "Deleted", channel_count, "applications"
+
     else:
         channel_count_msg = "Deleted", channel_count, "application"
     msg = await ctx.send(str(channel_count_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
-    await asyncio.sleep(15)
-    await msg.delete()
 
 
 @bot.command()
