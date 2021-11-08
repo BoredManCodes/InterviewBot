@@ -101,13 +101,11 @@ async def nuke(ctx):
             pass
     if channel_count > 1:
         channel_count_msg = "Deleted", channel_count, "applications"
-    if channel_count < 1:
-        channel_count_msg = "Deleted", channel_count, "applications"
-
-    else:
+    elif channel_count == 0:
+        channel_count_msg = "There were no applications"
+    elif channel_count == 1:
         channel_count_msg = "Deleted", channel_count, "application"
     msg = await ctx.send(str(channel_count_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
-
 
 
 @bot.command()
