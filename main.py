@@ -109,6 +109,7 @@ async def nuke(ctx):
     msg = await ctx.send(str(channel_count_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
 
 
+
 @bot.command()
 async def apply(ctx):
     blacklisted = [861275842009235457, 861290025891135489, 906739301394567189, 861279044162420766, 861279509110194207, 906747833825243146]
