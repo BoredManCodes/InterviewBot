@@ -5,6 +5,7 @@ from discord.ext import commands
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 token = config('TOKEN')
+bot.remove_command('help')
 
 @bot.event
 async def on_ready():
@@ -98,7 +99,6 @@ async def nuke(ctx):
             await channel.delete()
         except AttributeError:
             pass
-    await category.delete()
     if channel_count > 1:
         channel_count_msg = "Deleted", channel_count, "applications"
     else:
@@ -106,6 +106,7 @@ async def nuke(ctx):
     msg = await ctx.send(str(channel_count_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
     await asyncio.sleep(15)
     await msg.delete()
+
 
 @bot.command()
 async def apply(ctx):
@@ -159,6 +160,17 @@ async def close(ctx):
         await ctx.send("You can't do that here. This command will delete the channel and we wouldn't want that")
     else:
         await ctx.channel.delete()
+
+
+@bot.command(name='help', aliases=['h'], pass_context=True)
+async def help(ctx):
+
+    help = "`!apply` restarts a timed out or otherwise broken application\n" \
+           "`!close` marks an application as closed and deletes it's channel\n" \
+           "`!nuke` does what it says on the tin and nukes all the applications"
+    embed = discord.Embed(title="**Prism Interview Bot Help**", description=help, color=discord.Color.blue())
+    embed.set_footer(text="Requested by " + ctx.message.author.name, icon_url=ctx.message.author.avatar_url)
+    await ctx.send(embed=embed)
 
 
 bot.run(token)
