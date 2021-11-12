@@ -2,10 +2,19 @@ import discord
 import asyncio
 from decouple import config
 from discord.ext import commands
+from sys import platform
+
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
 token = config('TOKEN')
 bot.remove_command('help')
+
+if platform == "linux" or platform == "linux2":
+    bot.recruiter_ping = "<@&908691607006642216>"
+
+elif platform == "win32":
+    bot.recruiter_ping = "Detected test environment. Recruiter ping removed for sanity"
+
 
 @bot.event
 async def on_ready():
@@ -40,51 +49,59 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_member_join(ctx):
-    category_name = "APPLICATIONS"
-    category = discord.utils.get(ctx.guild.categories, name=category_name)
-    channel_name = "application-for-" + ctx.name
+    if ctx.bot:
+        return
+    else:
+        staff_channel = bot.get_channel(861275842009235457)
+        await staff_channel.send(bot.recruiter_ping)
+        await staff_channel.send("https://tenor.com/view/new-member-gif-21052846")
 
-    bored = await ctx.guild.fetch_member(324504908013240330)
-    overwrites = {
-        ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
-        ctx.guild.me: discord.PermissionOverwrite(read_messages=True),
-        ctx: discord.PermissionOverwrite(read_messages=True),
-        bored: discord.PermissionOverwrite(read_messages=True)
-    }
+        category_name = "APPLICATIONS"
+        category = discord.utils.get(ctx.guild.categories, name=category_name)
+        channel_name = "application-for-" + ctx.name
 
-    if category is None:
-        category = await ctx.guild.create_category(category_name, overwrites=None, reason=None)
-    channel = await ctx.guild.create_text_channel(channel_name, overwrites=overwrites, reason=None, category=category)
-    channel_msg = "Welcome to Prism SMP", ctx.mention, "your application has been automatically generated"
-    await channel.send(str(channel_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
+        bored = await ctx.guild.fetch_member(324504908013240330)
+        overwrites = {
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            ctx.guild.me: discord.PermissionOverwrite(read_messages=True),
+            ctx: discord.PermissionOverwrite(read_messages=True),
+            bored: discord.PermissionOverwrite(read_messages=True)
+        }
 
-    questions = ["How old are you?", "What are your pronouns?",
-                 "When faced with conflict, what is your go-to solution/reaction?", "Do you have Minecraft Java Edition?",
-                 "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
-                 "Are you a content creator? (if yes, please include a link)", "Any additional information about yourself?",
-                 "How did you get invited to the server?", "Any other questions for us?"] # Create your list of answers
+        if category is None:
+            category = await ctx.guild.create_category(category_name, overwrites=None, reason=None)
+        channel = await ctx.guild.create_text_channel(channel_name, overwrites=overwrites, reason=None, category=category)
+        channel_msg = "Welcome to Prism SMP", ctx.mention, "your application has been automatically generated"
+        await channel.send(str(channel_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
 
-    answers = []
+        questions = ["How old are you?", "What are your pronouns?",
+                     "When faced with conflict, what is your go-to solution/reaction?", "Do you have Minecraft Java Edition?",
+                     "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
+                     "Are you a content creator? (if yes, please include a link)", "Any additional information about yourself?",
+                     "How did you get invited to the server?", "Any other questions for us?"] # Create your list of answers
 
-    def check(m):
-        return m.author == ctx
+        answers = []
 
-    for i in questions:
-        await channel.send(i)
-        try:
-            msg = await bot.wait_for('message', timeout=600, check=check)
-        except asyncio.TimeoutError:
-            await channel.send("You took too long, your application has been closed."
-                               "\nType `!apply` to restart the process")
-            return
-        else:
-            answers.append(msg)
-    await channel.send("Your application has been completed. Please wait for a <@&907041826182148136> member to assess your answers")
-    answer_channel = bot.get_channel(861290025891135489)
-    e = discord.Embed(color=ctx.author.color)
-    e.title = ctx.author.name
-    e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n**{questions[8]}**: ```{answers[8].content}```\n"
-    await answer_channel.send(embed=e)
+        def check(m):
+            return m.author == ctx
+
+        for i in questions:
+            await channel.send(i)
+            try:
+                msg = await bot.wait_for('message', timeout=600, check=check)
+            except asyncio.TimeoutError:
+                await channel.send("You took too long, your application has been closed."
+                                   "\nType `!apply` to restart the process")
+                return
+            else:
+                answers.append(msg)
+        await channel.send(bot.recruiter_ping)
+        await channel.send("Your application has been completed. Please wait for a member to assess your answers")
+        answer_channel = bot.get_channel(861290025891135489)
+        e = discord.Embed(color=ctx.color)
+        e.title = ctx.name
+        e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n**{questions[8]}**: ```{answers[8].content}```\n"
+        await answer_channel.send(embed=e)
 
 @bot.command(pass_context=True)
 @commands.has_any_role('Moderator', 'Administrator', 'Discord Admin', 'Staff')
@@ -105,7 +122,14 @@ async def nuke(ctx):
         channel_count_msg = "There were no applications"
     elif channel_count == 1:
         channel_count_msg = "Deleted", channel_count, "application"
-    msg = await ctx.send(str(channel_count_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
+    else:
+        channel_count_msg = "Something funky is going on, I'm going to call dad. <@324504908013240330>"
+    await ctx.send(str(channel_count_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
+
+
+@bot.command()
+async def clear(ctx):
+    return
 
 
 @bot.command()
@@ -143,7 +167,8 @@ async def apply(ctx):
                 return
             else:
                 answers.append(msg)
-        await ctx.send("Your application has been completed. Please wait for a <@&907041826182148136> member to assess your answers")
+        await ctx.send(bot.recruiter_ping)
+        await ctx.send("Your application has been completed. Please wait for a member to assess your answers")
         answer_channel = bot.get_channel(861290025891135489)
         e = discord.Embed(color=ctx.author.color)
         e.title = ctx.author.name
