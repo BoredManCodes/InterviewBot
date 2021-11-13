@@ -10,15 +10,18 @@ token = config('TOKEN')
 bot.remove_command('help')
 
 if platform == "linux" or platform == "linux2":
+    bot.debug = False
     bot.recruiter_ping = "<@&908691607006642216>"
 
 elif platform == "win32":
+    bot.debug = True
     bot.recruiter_ping = "Detected test environment. Recruiter ping removed for sanity"
 
 
 @bot.event
 async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
+    print(f'Debug mode: {bot.debug}')
     print('------')
 
 
@@ -61,11 +64,13 @@ async def on_member_join(ctx):
         channel_name = "application-for-" + ctx.name
 
         bored = await ctx.guild.fetch_member(324504908013240330)
+        staff = discord.utils.get(ctx.guild.roles, name="Staff")
         overwrites = {
             ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             ctx.guild.me: discord.PermissionOverwrite(read_messages=True),
             ctx: discord.PermissionOverwrite(read_messages=True),
-            bored: discord.PermissionOverwrite(read_messages=True)
+            bored: discord.PermissionOverwrite(read_messages=True),
+            staff: discord.PermissionOverwrite(read_messages=True),
         }
 
         if category is None:
@@ -78,7 +83,7 @@ async def on_member_join(ctx):
                      "When faced with conflict, what is your go-to solution/reaction?", "Do you have Minecraft Java Edition?",
                      "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
                      "Are you a content creator? (if yes, please include a link)", "Any additional information about yourself?",
-                     "How did you get invited to the server?", "Any other questions for us?"] # Create your list of answers
+                     "How did you get invited to the server?", "Any other questions for us?"]
 
         answers = []
 
@@ -95,13 +100,18 @@ async def on_member_join(ctx):
                 return
             else:
                 answers.append(msg)
-        await channel.send(bot.recruiter_ping)
-        await channel.send("Your application has been completed. Please wait for a member to assess your answers")
         answer_channel = bot.get_channel(861290025891135489)
+        await answer_channel.send(bot.recruiter_ping)
+        await channel.send("Your application has been completed. Please wait for a member to assess your answers")
         e = discord.Embed(color=ctx.color)
         e.title = ctx.name
-        e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n**{questions[8]}**: ```{answers[8].content}```\n"
+        e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```" \
+                        f"\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n" \
+                        f"**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n" \
+                        f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
+                        f"**{questions[8]}**: ```{answers[8].content}```\n"
         await answer_channel.send(embed=e)
+
 
 @bot.command(pass_context=True)
 @commands.has_any_role('Moderator', 'Administrator', 'Discord Admin', 'Staff')
@@ -149,7 +159,7 @@ async def apply(ctx):
                      "Are you a content creator? (if yes, please include a link)",
                      "Any additional information about yourself?",
                      "How did you get invited to the server?",
-                     "Any other questions for us?"]  # Create your list of answers
+                     "Any other questions for us?"]
 
         answers = []
 
@@ -167,12 +177,16 @@ async def apply(ctx):
                 return
             else:
                 answers.append(msg)
-        await ctx.send(bot.recruiter_ping)
-        await ctx.send("Your application has been completed. Please wait for a member to assess your answers")
         answer_channel = bot.get_channel(861290025891135489)
+        await answer_channel.send(bot.recruiter_ping)
+        await ctx.send("Your application has been completed. Please wait for a member to assess your answers")
         e = discord.Embed(color=ctx.author.color)
         e.title = ctx.author.name
-        e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n**{questions[8]}**: ```{answers[8].content}```\n"
+        e.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n" \
+                        f"**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n" \
+                        f"**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n" \
+                        f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
+                        f"**{questions[8]}**: ```{answers[8].content}```\n"
         await answer_channel.send(embed=e)
 
 
