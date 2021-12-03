@@ -251,12 +251,14 @@ async def deny(ctx, *, member: discord.Member):
                 if msg.author == bot.user:
                     await msg.delete()
 
+
 @bot.event
 async def on_message(message):
     if not message.guild:
         if not message.author == bot.user:
             staff_channel = bot.get_channel(861275842009235457)
-            await staff_channel.send(f"{message.author.display_name} sent me a message: {message.content}")
+            message_filtered = str(message.content).replace('nigger', '`n-word`').replace('nigga', '`n-word`').replace('niga', '`n-word`').replace('nigg', '`n-word`').replace('nig', '`n-word`').replace('fuck', '`f-word`').replace('fuk', '`f-word`').replace('fuc', '`f-word`').replace('cunt', '`c-word`').replace('faggot', '`homophobic slur`').replace('www', '').replace('http', '')
+            await staff_channel.send(f"{message.author.display_name} sent me a message: {message_filtered}")
             await message.channel.send('Lol hi')
     await bot.process_commands(message)
 
