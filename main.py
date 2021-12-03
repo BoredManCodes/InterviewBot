@@ -3,6 +3,8 @@ import asyncio
 from decouple import config
 from discord.ext import commands
 from sys import platform
+from urllib import request, parse
+import json
 
 intents = discord.Intents.all()
 token = config('TOKEN')
@@ -257,8 +259,21 @@ async def on_message(message):
     if not message.guild:
         if not message.author == bot.user:
             staff_channel = bot.get_channel(861275842009235457)
-            message_filtered = str(message.content).replace('nigger', '`n-word`').replace('nigga', '`n-word`').replace('niga', '`n-word`').replace('nigg', '`n-word`').replace('nig', '`n-word`').replace('fuck', '`f-word`').replace('fuk', '`f-word`').replace('fuc', '`f-word`').replace('cunt', '`c-word`').replace('faggot', '`homophobic slur`').replace('www', '').replace('http', '')
-            await staff_channel.send(f"{message.author.display_name} sent me a message: {message_filtered}")
+            message_filtered = str(message.content).replace('www', '').replace('http', '')
+            url = 'https://neutrinoapi.net/bad-word-filter'
+            params = {
+                'user-id': 'BoredManSwears',
+                'api-key': config("NaughtyBoy_key"),
+                'content': message_filtered,
+                'censor-character': '•',
+                'catalog': 'strict'
+            }
+            postdata = parse.urlencode(params).encode()
+            req = request.Request(url, data=postdata)
+            response = request.urlopen(req)
+            result = json.loads(response.read().decode("utf-8"))
+            print(message.content)
+            await staff_channel.send(f"{message.author.display_name} sent me a message: {result['censored-content']}")
             await message.channel.send('Lol hi')
     await bot.process_commands(message)
 
