@@ -2,6 +2,8 @@ import time
 import random
 import discord
 import asyncio
+
+import sentry_sdk
 from decouple import config
 from discord.ext import commands
 from urllib import request, parse
@@ -10,7 +12,9 @@ import json
 from discord.ext.commands import CommandNotFound
 from discord_slash import ButtonStyle, ComponentContext, SlashCommand
 from discord_slash.utils.manage_components import create_button, create_actionrow, wait_for_component
-
+sentry_sdk.init(
+    config('SENTRY'),
+    traces_sample_rate=1.0)
 
 intents = discord.Intents.all()
 token = config('TOKEN')
@@ -37,24 +41,8 @@ async def on_member_remove(member):
         if member.bot:
             return
         else:
-            messages = [
-                f"Goodbye {member.name}",
-                f"It appears {member.name} has left",
-                f"{member.name} has disappeared :(",
-                f"We wish {member.name} well in their travels",
-                f"Toodles {member.name}!",
-                f"{member.name} found love elsewhere :(",
-                f"{member.name} left\nSee you later alligator",
-                f"{member.name} left\nBye Felicia",
-                f"Some cause happiness wherever they go; {member.name} causes it whenever they go",
-                f"{member.name} left\nSo long, and thanks for all the fish!",
-                f"{member.name} left\nWe are really going to miss trying to avoid you around here",
-                f"{member.name} left\nGoodbye, Vietnam! That’s right, I’m history, I’m outta here, "
-                f"I got the lucky ticket home, baby",
-                f"Welp, I guess {member.name} died. That's the only reason I can imagine anyone would leave us"
-            ]
             staff = bot.get_channel(861275842009235457)
-            await staff.send(random.choice(messages))
+            await staff.send(f"{member.name} left")
 
 
 @bot.event
@@ -110,98 +98,7 @@ async def on_member_join(ctx):
                       "`If you leave a question unanswered for 10 minutes your application will be closed automatically`\n**Please only send one message per question.**"
         await channel.send(channel_msg)
 
-        questions = ["How old are you?", "What are your pronouns?",
-                     "When faced with conflict, what is your go-to solution/reaction?",
-                     "Do you have Minecraft Java Edition?",
-                     "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
-                     "Are you a content creator? (if yes, please include a link)",
-                     "Any additional information about yourself?",
-                     "How did you get invited to the server?",
-                     "Any other questions for us?"]
-        answers = []
-
-        def check(m):
-            return m.author == ctx
-
-        for i in questions:
-            await channel.send(i)
-            try:
-                msg = await bot.wait_for('message', timeout=600, check=check)
-            except asyncio.TimeoutError:
-                await channel.send("You took too long, your application has been closed."
-                               "\nType `!apply` to restart the process")
-
-                return
-            else:
-                answers.append(msg)
-        answer_channel = bot.get_channel(861290025891135489)
-        await answer_channel.send("<@&908691607006642216>")
-        await channel.send("Your application has been completed. Please wait for a member to assess your answers")
-        embed = discord.Embed(color=discord.colour.Color.red())
-        embed.title = f"{ctx.name}'s answers"
-        button = [
-            create_button(
-                style=ButtonStyle.green,
-                label="Accept",
-                custom_id="accept"
-            ), create_button(
-                style=ButtonStyle.danger,
-                label="Deny",
-                custom_id="deny"
-            ),
-        ]
-        action_row = create_actionrow(*button)
-        embed.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n" \
-                            f"**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n" \
-                            f"**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n" \
-                            f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
-                            f"**{questions[8]}**: ```{answers[8].content}```\n"
-        await answer_channel.send(embed=embed, components=[action_row])
-        ctx: ComponentContext = await wait_for_component(bot, components=action_row)
-        await ctx.edit_origin(components=None)
-        if ctx.custom_id == "accept":
-            welcome_channel = bot.get_channel(id=861317568807829535)
-            invitelink = await welcome_channel.create_invite(max_uses=1, unique=True)
-            await answer_channel.send(f"Here's your invite to send to {member.name}\n{invitelink}")
-        elif ctx.custom_id == "deny":
-            staff_channel = bot.get_channel(861275842009235457)
-            await channel.delete()
-            denied_msg = f":x: {member.display_name} was denied entry and kicked by {ctx.author.display_name}"
-            await staff_channel.send(denied_msg)
-            await member.send(
-                "Sorry to say your application has been denied as we have reached our capacity for new members.\n"
-                "Thank you for applying though! You can apply another time in the future and hope for the best!")
-            await member.kick(reason="Denied")
-            for msg in await staff_channel.history(limit=200).flatten():
-                bot_messages = ["https://tenor.com/view/new-member-gif-21052846", "<@&908691607006642216>"]
-                if any(keyword in msg.content.lower() for keyword in bot_messages):
-                    if msg.author == bot.user:
-                        await msg.delete()
-
-
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, CommandNotFound):
-        return
-    embed = discord.Embed(title=f"**Error in command: {ctx.command}**", description=f"```\n{error}\n```", colour=discord.Color.red())
-    await ctx.send(embed=embed)
-    raise error
-
-
-@bot.command()
-async def apply(ctx):
-    if ctx.channel.category_id != 907041085312872489:
-
-        await ctx.send("https://media.giphy.com/media/3oKHW6zXvJ02pDmqTC/giphy.gif")
-        await ctx.send("You can't do that here. If you need to fill out another application for some reason (you shouldn't need to) leave and re-join the server to trigger the process")
-    else:
-        member = ctx.author
-        application_channel = ctx.channel
-        channel_msg = f"Welcome to Prism SMP {ctx.author.mention} your application has been automatically generated\n"\
-                      "`If you leave a question unanswered for 10 minutes your application will be closed automatically`\n**Please only send one message per question.**"
-        await ctx.send(str(channel_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
-
-        questions = ["How old are you?", "What are your pronouns?",
+        questions = ["How old are you?", "What part of the world are you from?", "What are your pronouns?",
                      "When faced with conflict, what is your go-to solution/reaction?",
                      "Do you have Minecraft Java Edition?",
                      "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
@@ -246,14 +143,109 @@ async def apply(ctx):
                         f"**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n" \
                         f"**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n" \
                         f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
-                        f"**{questions[8]}**: ```{answers[8].content}```\n"
+                        f"**{questions[8]}**: ```{answers[8].content}```**{questions[9]}**: ```{answers[9].content}```\n"
         await answer_channel.send(embed=embed, components=[action_row])
         ctx: ComponentContext = await wait_for_component(bot, components=action_row)
         await ctx.edit_origin(components=None)
         if ctx.custom_id == "accept":
             welcome_channel = bot.get_channel(id=861317568807829535)
+            mod_log = bot.get_channel(id=897765157940396052)
             invitelink = await welcome_channel.create_invite(max_uses=1, unique=True)
             await answer_channel.send(f"Here's your invite to send to {member.name}\n{invitelink}")
+            await mod_log.send(embed=embed)
+        elif ctx.custom_id == "deny":
+            staff_channel = bot.get_channel(861275842009235457)
+            await channel.delete()
+            denied_msg = f":x: {member.display_name} was denied entry and kicked by {ctx.author.display_name}"
+            await staff_channel.send(denied_msg)
+            await member.send(
+                "Sorry to say your application has been denied as we have reached our capacity for new members.\n"
+                "Thank you for applying though! You can apply another time in the future and hope for the best!")
+            await member.kick(reason="Denied")
+            for msg in await staff_channel.history(limit=200).flatten():
+                bot_messages = ["https://tenor.com/view/new-member-gif-21052846", "<@&908691607006642216>"]
+                if any(keyword in msg.content.lower() for keyword in bot_messages):
+                    if msg.author == bot.user:
+                        await msg.delete()
+
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, CommandNotFound):
+        return
+    embed = discord.Embed(title=f"**Error in command: {ctx.command}**", description=f"```\n{error}\n```", colour=discord.Color.red())
+    await ctx.send(embed=embed)
+    raise error
+
+
+@bot.command()
+async def apply(ctx):
+    if ctx.channel.category_id != 907041085312872489:
+
+        await ctx.send("https://media.giphy.com/media/3oKHW6zXvJ02pDmqTC/giphy.gif")
+        await ctx.send("You can't do that here. If you need to fill out another application for some reason (you shouldn't need to) leave and re-join the server to trigger the process")
+    else:
+        member = ctx.author
+        application_channel = ctx.channel
+        channel_msg = f"Welcome to Prism SMP {ctx.author.mention} your application has been automatically generated\n"\
+                      "`If you leave a question unanswered for 10 minutes your application will be closed automatically`\n**Please only send one message per question.**"
+        await ctx.send(str(channel_msg).replace('(', '').replace(')', '').replace(',', '').replace('\'', ''))
+
+        questions = ["How old are you?", "What part of the world are you from?", "What are your pronouns?",
+                     "When faced with conflict, what is your go-to solution/reaction?",
+                     "Do you have Minecraft Java Edition?",
+                     "What is your minecraft skillset? (Are you a builder, redstoner etc.)",
+                     "Are you a content creator? (if yes, please include a link)",
+                     "Any additional information about yourself?",
+                     "How did you get invited to the server?",
+                     "Any other questions for us?"]
+        answers = []
+
+        def check(m):
+            return m.author == ctx.author
+
+        for i in questions:
+            await ctx.send(i)
+            try:
+                msg = await bot.wait_for('message', timeout=600, check=check)
+            except asyncio.TimeoutError:
+                await ctx.send("You took too long, your application has been closed."
+                                   "\nType `!apply` to restart the process")
+
+                return
+            else:
+                answers.append(msg)
+        answer_channel = bot.get_channel(861290025891135489)
+        await answer_channel.send("<@&908691607006642216>")
+        await ctx.send("Your application has been completed. Please wait for a member to assess your answers")
+        embed = discord.Embed(color=ctx.author.color)
+        embed.title = f"{ctx.author.name}'s answers"
+        button = [
+            create_button(
+                style=ButtonStyle.green,
+                label="Accept",
+                custom_id="accept"
+            ),create_button(
+                style=ButtonStyle.danger,
+                label="Deny",
+                custom_id="deny"
+            ),
+        ]
+        action_row = create_actionrow(*button)
+        embed.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n" \
+                        f"**{questions[2]}**: ```{answers[2].content}```\n**{questions[3]}**: ```{answers[3].content}```\n" \
+                        f"**{questions[4]}**: ```{answers[4].content}```\n**{questions[5]}**: ```{answers[5].content}```\n" \
+                        f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
+                        f"**{questions[8]}**: ```{answers[8].content}```**{questions[9]}**: ```{answers[9].content}```\n"
+        await answer_channel.send(embed=embed, components=[action_row])
+        ctx: ComponentContext = await wait_for_component(bot, components=action_row)
+        await ctx.edit_origin(components=None)
+        if ctx.custom_id == "accept":
+            welcome_channel = bot.get_channel(id=861317568807829535)
+            mod_log = bot.get_channel(id=897765157940396052)
+            invitelink = await welcome_channel.create_invite(max_uses=1, unique=True)
+            await answer_channel.send(f"Here's your invite to send to {member.name}\n{invitelink}")
+            await mod_log.send(embed=embed)
         elif ctx.custom_id == "deny":
             staff_channel = bot.get_channel(861275842009235457)
             await application_channel.delete()
