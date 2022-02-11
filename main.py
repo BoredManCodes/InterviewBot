@@ -109,14 +109,14 @@ async def on_member_join(ctx):
         answers = []
 
         def check(m):
-            return m.author == ctx.author
+            return m.author == ctx
 
         for i in questions:
-            await ctx.send(i)
+            await channel.send(i)
             try:
                 msg = await bot.wait_for('message', timeout=600, check=check)
             except asyncio.TimeoutError:
-                await ctx.send("You took too long, your application has been closed."
+                await channel.send("You took too long, your application has been closed."
                                    "\nType `!apply` to restart the process")
 
                 return
@@ -124,15 +124,15 @@ async def on_member_join(ctx):
                 answers.append(msg)
         answer_channel = bot.get_channel(861290025891135489)
         await answer_channel.send("<@&908691607006642216>")
-        await ctx.send("Your application has been completed. Please wait for a member to assess your answers")
-        embed = discord.Embed(color=ctx.author.color)
-        embed.title = f"{ctx.author.name}'s answers"
+        await channel.send("Your application has been completed. Please wait for a member to assess your answers")
+        embed = discord.Embed(color=discord.colour.Color.red())
+        embed.title = f"{ctx.name}'s answers"
         button = [
             create_button(
                 style=ButtonStyle.green,
                 label="Accept",
                 custom_id="accept"
-            ),create_button(
+            ), create_button(
                 style=ButtonStyle.danger,
                 label="Deny",
                 custom_id="deny"
