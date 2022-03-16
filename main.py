@@ -5,12 +5,14 @@ import asyncio
 
 import sentry_sdk
 from decouple import config
-from discord.ext import commands
+from discord.ext import commands, tasks
 from urllib import request, parse
 import json
 
 from discord.ext.commands import CommandNotFound
 from discord_slash import ButtonStyle, ComponentContext, SlashCommand
+from discord_slash.context import InteractionContext
+from discord_slash.utils.manage_commands import create_option
 from discord_slash.utils.manage_components import create_button, create_actionrow, wait_for_component
 sentry_sdk.init(
     config('SENTRY'),
@@ -21,6 +23,7 @@ token = config('TOKEN')
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 bot.debug = False
+#bot.recruiter_ping = "Boop"
 bot.recruiter_ping = "<@&908691607006642216>"
 slash = SlashCommand(bot, sync_commands=True)
 
@@ -33,11 +36,21 @@ async def on_ready():
     print(f'Logged in as {bot.user} (ID: {bot.user.id})')
     print(f'Debug mode: {bot.debug}')
     print('------')
+    input_file = open('queue.json', "r")
+    json_array = json.load(input_file)
+    counter = 0
+    for item in json_array['queue']:
+        counter += 1
+    print(f"{counter} queued members loaded")
+    queue_channel = bot.get_channel(id=953462744827433020)
+    await queue_channel.edit(name=f"{counter} Queued Members")
+    input_file.close()
+    channel_update.start()
 
 
 @bot.event
 async def on_member_remove(member):
-    if member.guild.id == 861018927752151071:  # Only detect if the user left the Prism guild
+    if member.guild.id == 861018927752151071:  # Only detect if the user left the interview guild
         if member.bot:
             return
         else:
@@ -49,7 +62,7 @@ async def on_member_remove(member):
 async def on_member_join(ctx):
     if ctx.bot:
         return
-    if ctx.guild.id != 861018927752151071:
+    if ctx.guild.id != 861018927752151071:  # if user joined main server kick them from interview server
         guild = bot.get_guild(861018927752151071)
         await guild.kick(ctx)
         return
@@ -131,12 +144,16 @@ async def on_member_join(ctx):
             create_button(
                 style=ButtonStyle.green,
                 label="Accept",
-                custom_id="accept"
+                custom_id=f"{ctx.id}accept"
             ), create_button(
                 style=ButtonStyle.danger,
                 label="Deny",
-                custom_id="deny"
-            ),
+                custom_id=f"{ctx.id}deny"
+            ), create_button(
+                style=ButtonStyle.blue,
+                label="Queue",
+                custom_id=f"{ctx.id}queue"
+            )
         ]
         action_row = create_actionrow(*button)
         embed.description = f"**{questions[0]}**: ```{answers[0].content}```\n**{questions[1]}**: ```{answers[1].content}```\n" \
@@ -145,15 +162,17 @@ async def on_member_join(ctx):
                         f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
                         f"**{questions[8]}**: ```{answers[8].content}```**{questions[9]}**: ```{answers[9].content}```\n"
         await answer_channel.send(embed=embed, components=[action_row])
+        user_id = ctx.id
+        user_name = ctx.display_name
         ctx: ComponentContext = await wait_for_component(bot, components=action_row)
         await ctx.edit_origin(components=None)
-        if ctx.custom_id == "accept":
+        if ctx.custom_id == f"{user_id}accept":
             welcome_channel = bot.get_channel(id=861317568807829535)
             mod_log = bot.get_channel(id=897765157940396052)
             invitelink = await welcome_channel.create_invite(max_uses=1, unique=True)
             await answer_channel.send(f"Here's your invite to send to {member.name}\n{invitelink}")
             await mod_log.send(embed=embed)
-        elif ctx.custom_id == "deny":
+        elif ctx.custom_id == f"{user_id}deny":
             staff_channel = bot.get_channel(861275842009235457)
             await channel.delete()
             denied_msg = f":x: {member.display_name} was denied entry and kicked by {ctx.author.display_name}"
@@ -167,6 +186,119 @@ async def on_member_join(ctx):
                 if any(keyword in msg.content.lower() for keyword in bot_messages):
                     if msg.author == bot.user:
                         await msg.delete()
+        elif ctx.custom_id == f"{user_id}queue":
+            input_file = open('queue.json', "r")
+            json_array = json.load(input_file)
+            json_array['queue'].append(user_id)
+            jsonString = json.dumps(json_array)
+            output_file = open('queue.json', "w")
+            output_file.write(jsonString)
+            output_file.close()
+            await ctx.send(f"Queued {user_name}\nQueue now has {len(json_array['queue'])} members")
+
+
+@tasks.loop(seconds=15)
+async def channel_update():
+    input_file = open('queue.json', "r")
+    json_array = json.load(input_file)
+    counter = 0
+    for item in json_array['queue']:
+        counter += 1
+    queue_channel = bot.get_channel(id=953462744827433020)
+    if not queue_channel.name == f"{counter} Queued Members":
+        await queue_channel.edit(name=f"{counter} Queued Members")
+        print("Changing counter channel numbers")
+
+    input_file.close()
+
+
+@slash.slash(name="queue", description="List all members in the queue", guild_ids=[861018927752151071])
+async def queue(ctx: InteractionContext):
+    input_file = open('queue.json', "r")
+    json_array = json.load(input_file)
+    counter = 0
+    queued_members = []
+    for item in json_array['queue']:
+        member = discord.utils.get(bot.get_all_members(), id=item)
+        queued_members.append(member.display_name)
+        counter += 1
+    await ctx.send(str(queued_members).replace('[', '').replace(']', '').replace("'", "").replace(', ', '\n'))
+    input_file.close()
+
+
+@slash.slash(name="remove", description="Removes a queued member from the queue", guild_ids=[861018927752151071], options=[
+                 create_option(
+                     name="user",
+                     description="The queued user to remove",
+                     option_type=6,
+                     required=True
+                 )
+             ])
+async def remove(ctx: InteractionContext, user: discord.Member):
+    recruit_role = discord.utils.get(ctx.guild.roles, id=908691607006642216)
+    if recruit_role not in ctx.author.roles:
+        await ctx.send("You are not authorised to do that")
+        return
+    else:
+        staff_channel = bot.get_channel(id=861275842009235457)
+        await ctx.send(f"Removed {user.mention} from the queue", hidden=True)
+        await staff_channel.send(f"{ctx.author.display_name} just removed {user.display_name} from the queue")
+        input_file = open('queue.json', "r")
+        json_array = json.load(input_file)
+        for member in json_array['queue']:
+            if member == user.id:
+                json_array['queue'].remove(member)
+        jsonString = json.dumps(json_array)
+        output_file = open('queue.json', "w")
+        output_file.write(jsonString)
+        output_file.close()
+
+
+@slash.slash(name="accept", description="Accepts a queued member", guild_ids=[861018927752151071], options=[
+                 create_option(
+                     name="user",
+                     description="The queued user to accept",
+                     option_type=6,
+                     required=True
+                 )
+             ])
+async def accept(ctx: InteractionContext, user: discord.Member):
+    recruit_role = discord.utils.get(ctx.guild.roles, id=908691607006642216)
+    if recruit_role not in ctx.author.roles:
+        await ctx.send("You are not authorised to do that")
+        return
+    else:
+        category_name = "APPLICATIONS"
+        category = discord.utils.get(ctx.guild.categories, name=category_name)
+        channel_name = "application-for-" + user.display_name
+
+        bored = await ctx.guild.fetch_member(324504908013240330)
+        staff = discord.utils.get(ctx.guild.roles, name="Staff")
+        overwrites = {
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            ctx.guild.me: discord.PermissionOverwrite(read_messages=True),
+            user: discord.PermissionOverwrite(read_messages=True),
+            bored: discord.PermissionOverwrite(read_messages=True),
+            staff: discord.PermissionOverwrite(read_messages=True),
+        }
+        if category is None:
+            category = await ctx.guild.create_category(category_name, overwrites=None, reason=None)
+        channel = await ctx.guild.create_text_channel(channel_name, overwrites=overwrites, reason=None,
+                                                      category=category)
+        welcome_channel = bot.get_channel(id=861317568807829535)
+        staff_channel = bot.get_channel(id=861275842009235457)
+        invitelink = await welcome_channel.create_invite(max_uses=1, unique=True)
+        await ctx.send(f"Here's your invite to send to {user.display_name}\n{invitelink}", hidden=True)
+        await staff_channel.send(f"{ctx.author.display_name} just accepted {user.display_name} to Prism")
+        input_file = open('queue.json', "r")
+        json_array = json.load(input_file)
+        for member in json_array['queue']:
+            if member == user.id:
+                json_array['queue'].remove(member)
+        jsonString = json.dumps(json_array)
+        output_file = open('queue.json', "w")
+        output_file.write(jsonString)
+        output_file.close()
 
 
 @bot.event
