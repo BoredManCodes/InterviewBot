@@ -55,7 +55,18 @@ async def on_member_remove(member):
             return
         else:
             staff = bot.get_channel(861275842009235457)
-            await staff.send(f"{member.name} left")
+            await staff.send(member)
+            input_file = open('queue.json', "r")
+            json_array = json.load(input_file)
+            for member in json_array['queue']:
+                if member == member.id:
+                    await staff.send(
+                        f"{member.name} left\nRemoved them from the queue")
+                    json_array['queue'].remove(member)
+            jsonString = json.dumps(json_array)
+            output_file = open('queue.json', "w")
+            output_file.write(jsonString)
+            output_file.close()
 
 
 @bot.event
@@ -162,6 +173,8 @@ async def on_member_join(ctx):
                         f"**{questions[6]}**: ```{answers[6].content}```\n**{questions[7]}**: ```{answers[7].content}```\n" \
                         f"**{questions[8]}**: ```{answers[8].content}```**{questions[9]}**: ```{answers[9].content}```\n"
         await answer_channel.send(embed=embed, components=[action_row])
+        completed_role = discord.utils.get(ctx.guild.roles, id=953781813774540860)
+        await ctx.add_roles(completed_role)
         user_id = ctx.id
         user_name = ctx.display_name
         ctx: ComponentContext = await wait_for_component(bot, components=action_row)
@@ -199,6 +212,7 @@ async def on_member_join(ctx):
 
 @tasks.loop(seconds=15)
 async def channel_update():
+    # Queue updater
     input_file = open('queue.json', "r")
     json_array = json.load(input_file)
     counter = 0
@@ -208,8 +222,16 @@ async def channel_update():
     if not queue_channel.name == f"{counter} Queued Members":
         await queue_channel.edit(name=f"{counter} Queued Members")
         print("Changing counter channel numbers")
-
     input_file.close()
+    # New member and total member counter
+    new_member_channel = bot.get_channel(id=958914882659565569)
+    total_member_channel = bot.get_channel(id=958914922572550174)
+    prism = bot.get_guild(id=858547359804555264)
+    new_members = discord.utils.get(prism.roles, name="New Member")
+    if not new_member_channel.name == f"{len(new_members.members)} New Members":
+        await new_member_channel.edit(name=f"{len(new_members.members)} New Members")
+    if not total_member_channel.name == f"{len(total_member_channel.members)} Total Members":
+        await total_member_channel.edit(name=f"{len(prism.members)} Total Members")
 
 
 @slash.slash(name="queue", description="List all members in the queue", guild_ids=[861018927752151071])
@@ -347,6 +369,8 @@ async def apply(ctx):
                 return
             else:
                 answers.append(msg)
+        completed_role = discord.utils.get(ctx.guild.roles, id=953781813774540860)
+        await ctx.author.add_roles(completed_role)
         answer_channel = bot.get_channel(861290025891135489)
         await answer_channel.send("<@&908691607006642216>")
         await ctx.send("Your application has been completed. Please wait for a member to assess your answers")
